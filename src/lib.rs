@@ -38,36 +38,36 @@ impl CompactSize {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<(Self, usize), BitcoinError> {
-         if bytes.is_empty() {
+        if bytes.is_empty() {
             return Err(BitcoinError::InsufficientBytes);
         }
         match bytes[0] {
-    x @ 0x00..=0xFC => Ok((Self::new(x as u64), 1)),
-    0xFD => {
-        if bytes.len() < 3 {
-            Err(BitcoinError::InsufficientBytes)
-        } else {
-            let val = u16::from_le_bytes([bytes[1], bytes[2]]) as u64;
-            Ok((Self::new(val), 3))
+            x @ 0x00..=0xFC => Ok((Self::new(x as u64), 1)),
+            0xFD => {
+                if bytes.len() < 3 {
+                    Err(BitcoinError::InsufficientBytes)
+                } else {
+                    let val = u16::from_le_bytes([bytes[1], bytes[2]]) as u64;
+                    Ok((Self::new(val), 3))
+                }
+            }
+            0xFE => {
+                if bytes.len() < 5 {
+                    Err(BitcoinError::InsufficientBytes)
+                } else {
+                    let val = u32::from_le_bytes(bytes[1..5].try_into().unwrap()) as u64;
+                    Ok((Self::new(val), 5))
+                }
+            }
+            0xFF => {
+                if bytes.len() < 9 {
+                    Err(BitcoinError::InsufficientBytes)
+                } else {
+                    let val = u64::from_le_bytes(bytes[1..9].try_into().unwrap());
+                    Ok((Self::new(val), 9))
+                }
+            }
         }
-    }
-    0xFE => {
-        if bytes.len() < 5 {
-            Err(BitcoinError::InsufficientBytes)
-        } else {
-            let val = u32::from_le_bytes(bytes[1..5].try_into().unwrap()) as u64;
-            Ok((Self::new(val), 5))
-        }
-    }
-    0xFF => {
-        if bytes.len() < 9 {
-            Err(BitcoinError::InsufficientBytes)
-        } else {
-            let val = u64::from_le_bytes(bytes[1..9].try_into().unwrap());
-            Ok((Self::new(val), 9))
-        }
-    }
-}
     }
 }
 
@@ -79,7 +79,7 @@ impl Serialize for Txid {
     where
         S: serde::Serializer,
     {
-         serializer.serialize_str(&hex::encode(self.0))
+        serializer.serialize_str(&hex::encode(self.0))
     }
 }
 
@@ -107,7 +107,7 @@ pub struct OutPoint {
 
 impl OutPoint {
     pub fn new(txid: [u8; 32], vout: u32) -> Self {
-         Self {
+        Self {
             txid: Txid(txid),
             vout,
         }
@@ -138,7 +138,7 @@ pub struct Script {
 
 impl Script {
     pub fn new(bytes: Vec<u8>) -> Self {
-         Self { bytes }
+        Self { bytes }
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -161,7 +161,7 @@ impl Script {
 impl Deref for Script {
     type Target = Vec<u8>;
     fn deref(&self) -> &Self::Target {
-         &self.bytes
+        &self.bytes
     }
 }
 
@@ -189,13 +189,16 @@ impl TransactionInput {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<(Self, usize), BitcoinError> {
-         let (prev_out, prev_len) = OutPoint::from_bytes(bytes)?;
+        let (prev_out, prev_len) = OutPoint::from_bytes(bytes)?;
         let (script, script_len) = Script::from_bytes(&bytes[prev_len..])?;
         if bytes.len() < prev_len + script_len + 4 {
             return Err(BitcoinError::InsufficientBytes);
         }
-        let sequence =
-            u32::from_le_bytes(bytes[prev_len + script_len..prev_len + script_len + 4].try_into().unwrap());
+        let sequence = u32::from_le_bytes(
+            bytes[prev_len + script_len..prev_len + script_len + 4]
+                .try_into()
+                .unwrap(),
+        );
         Ok((
             Self::new(prev_out, script, sequence),
             prev_len + script_len + 4,
@@ -252,10 +255,7 @@ impl BitcoinTransaction {
         }
 
         let lock_time = u32::from_le_bytes(bytes[cursor..cursor + 4].try_into().unwrap());
-        Ok((
-            Self::new(version, inputs, lock_time),
-            cursor + 4,
-        ))
+        Ok((Self::new(version, inputs, lock_time), cursor + 4))
     }
 }
 
